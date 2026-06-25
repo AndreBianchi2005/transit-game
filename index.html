@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Transit Rides Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #header {
+      padding: 12px 20px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-shrink: 0;
+    }
+
+    #header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e0e0e0;
+      letter-spacing: 0.5px;
+    }
+
+    #player-select {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 14px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    #player-select:focus {
+      border-color: #00A1DE;
+    }
+
+    #stats {
+      margin-left: auto;
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    #stats span {
+      color: #eee;
+      font-weight: 600;
+    }
+
+    #map {
+      flex: 1;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #16213e;
+      color: #eee;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+    }
+
+    .leaflet-popup-tip {
+      background: #16213e;
+    }
+
+    .popup-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .popup-players {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .popup-swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    #legend {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
+      z-index: 1000;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      max-width: 220px;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    #legend h3 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+
+    .legend-item:hover {
+      background: #0f3460;
+    }
+
+    .legend-swatch {
+      width: 24px;
+      height: 4px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .legend-label {
+      color: #ddd;
+      font-size: 12px;
+    }
+
+    #no-rides {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 24px 32px;
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>Transit Rides Map</h1>
+  <select id="player-select"><option>Loading...</option></select>
+  <div id="stats">Routes ridden: <span id="route-count">—</span></div>
+</div>
+
+<div id="map"></div>
+
+<div id="legend"><h3>Lines</h3><div id="legend-items"></div></div>
+
+<div id="no-rides">No rides logged yet for this player.</div>
+
+<script>
+  const map = L.map('map', { zoomControl: true }).setView([41.88, -87.65], 10);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(map);
+
+  let allFeatures = [];
+  let activeLayers = [];
+
+  function clearLayers() {
+    activeLayers.forEach(l => map.removeLayer(l));
+    activeLayers = [];
+  }
+
+  function renderPlayer(playerName) {
+    clearLayers();
+
+    const features = playerName === '__all__'
+      ? allFeatures
+      : allFeatures.filter(f => f.properties.players.includes(playerName));
+
+    const noRidesEl = document.getElementById('no-rides');
+    const legendItems = document.getElementById('legend-items');
+    const routeCount = document.getElementById('route-count');
+
+    legendItems.innerHTML = '';
+    routeCount.textContent = features.length;
+
+    if (features.length === 0) {
+      noRidesEl.style.display = 'block';
+      return;
+    }
+    noRidesEl.style.display = 'none';
+
+    features.forEach(feature => {
+      const { route_name, color, players, agency } = feature.properties;
+
+      const isCTABus = agency === 'cta' && !route_name.includes('Line');
+      const isPace   = agency === 'pace';
+      const isMetra  = agency === 'metra' || agency === 'ssl';
+      const isBus    = isCTABus || isPace;
+      const lineColor = isCTABus ? '#999999' : isPace ? '#7EC8E3' : color;
+      const weight = isBus ? 2.5 : 4;
+      const layer = L.geoJSON(feature, {
+        style: {
+          color: lineColor,
+          weight,
+          opacity: 0.9,
+          lineJoin: 'round',
+          lineCap: 'round',
+          dashArray: isBus ? '8, 6' : null
+        }
+      });
+
+      layer.bindPopup(`
+        <div class="popup-title">
+          <span class="popup-swatch" style="background:${lineColor}"></span>
+          ${route_name}
+        </div>
+        <div class="popup-players">${players.join(', ')}</div>
+      `);
+
+      layer.addTo(map);
+      activeLayers.push(layer);
+
+      // Legend entry
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `
+        <div class="legend-swatch" style="background:${lineColor}"></div>
+        <div class="legend-label">${route_name}</div>
+      `;
+      item.addEventListener('click', () => {
+        layer.openPopup(layer.getBounds().getCenter());
+        map.fitBounds(layer.getBounds(), { padding: [40, 40] });
+      });
+      legendItems.appendChild(item);
+    });
+  }
+
+  const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS6-06iyQhtO4SkD9HCW6FBXDOttTeF1Svd-Qu8VA4pr1RmEujLHE67LPCqpWRML7imcMA6K5G_FKRt/pub?gid=2084865834&single=true&output=csv';
+
+  // Normalize route names to handle known typos in the sheet
+  function normalizeRoute(r) {
+    return r.trim().replace('Union Pacfic West', 'Union Pacific West');
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    return lines.slice(1).map(line => {
+      // Handle quoted fields with commas inside
+      const cols = [];
+      let cur = '', inQuote = false;
+      for (const ch of line) {
+        if (ch === '"') { inQuote = !inQuote; }
+        else if (ch === ',' && !inQuote) { cols.push(cur.trim()); cur = ''; }
+        else { cur += ch; }
+      }
+      cols.push(cur.trim());
+      return Object.fromEntries(headers.map((h, i) => [h, cols[i] ?? '']));
+    });
+  }
+
+  // Build {routeKey: Set<playerName>} from CSV rows
+  function buildRidersMap(rows) {
+    const map = {};
+    for (const row of rows) {
+      const player = row['Player Name']?.trim();
+      const route  = normalizeRoute(row['Route'] ?? '');
+      if (!player || !route) continue;
+      if (!map[route]) map[route] = new Set();
+      map[route].add(player);
+    }
+    return map;
+  }
+
+  Promise.all([
+    fetch('routes_ridden.geojson').then(r => r.json()),
+    fetch(SHEET_CSV).then(r => r.text())
+  ]).then(([geojson, csvText]) => {
+    const rows = parseCSV(csvText);
+    const ridersMap = buildRidersMap(rows);
+
+    // Attach live player lists to each feature using route_key
+    allFeatures = geojson.features.map(f => {
+      const key = normalizeRoute(f.properties.route_key);
+      const players = Array.from(ridersMap[key] ?? []).sort();
+      return { ...f, properties: { ...f.properties, players } };
+    }).filter(f => f.properties.players.length > 0);
+
+    // Collect unique players from live data
+    const playerSet = new Set();
+    Object.values(ridersMap).forEach(s => s.forEach(p => playerSet.add(p)));
+    const players = Array.from(playerSet).sort();
+
+    const select = document.getElementById('player-select');
+    select.innerHTML = '';
+
+    const allOpt = document.createElement('option');
+    allOpt.value = '__all__';
+    allOpt.textContent = 'All Players';
+    select.appendChild(allOpt);
+
+    players.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+
+    select.addEventListener('change', () => renderPlayer(select.value));
+    renderPlayer('__all__');
+
+  }).catch(err => {
+    console.error('Failed to load data:', err);
+    document.getElementById('stats').textContent = 'Error loading data.';
+  });
+</script>
+
+</body>
+</html>
