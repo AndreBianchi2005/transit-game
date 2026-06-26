@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Transit Rides Map</title>
+  <title>NATS Summer Transit Game</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
@@ -11,179 +11,553 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #1a1a2e;
+      background: #4E2A84;
       color: #eee;
       height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    #header {
-      padding: 12px 20px;
-      background: #16213e;
-      border-bottom: 1px solid #0f3460;
+    /* ── Nav ── */
+    #nav {
+      background: #3a1f6e;
+      border-bottom: 2px solid #5a32a3;
       display: flex;
       align-items: center;
-      gap: 20px;
+      padding: 0 24px;
+      gap: 28px;
       flex-shrink: 0;
+      height: 52px;
     }
 
-    #header h1 {
-      font-size: 16px;
+    #nav h1 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #e8d8ff;
+      letter-spacing: 0.8px;
+      margin-right: 12px;
+      text-transform: uppercase;
+    }
+
+    .nav-tab {
+      font-size: 13px;
       font-weight: 600;
-      color: #e0e0e0;
-      letter-spacing: 0.5px;
+      color: #9b7fd4;
+      cursor: pointer;
+      padding: 6px 2px;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none;
+      letter-spacing: 0.3px;
+    }
+
+    .nav-tab:hover { color: #c9a8f5; }
+
+    .nav-tab.active {
+      color: #fff;
+      border-bottom-color: #c9a8f5;
+    }
+
+    /* ── Map toolbar ── */
+    #map-toolbar {
+      padding: 10px 20px;
+      background: #3a1f6e;
+      border-bottom: 1px solid #5a32a3;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
     }
 
     #player-select {
       padding: 6px 12px;
       border-radius: 6px;
-      border: 1px solid #0f3460;
-      background: #1a1a2e;
-      color: #eee;
+      border: 1px solid #5a32a3;
+      background: #2d1654;
+      color: #e8d8ff;
       font-size: 14px;
       cursor: pointer;
       outline: none;
     }
 
-    #player-select:focus {
-      border-color: #00A1DE;
-    }
+    #player-select:focus { border-color: #c9a8f5; }
 
     #stats {
       margin-left: auto;
       font-size: 13px;
-      color: #aaa;
+      color: #9b7fd4;
     }
 
-    #stats span {
-      color: #eee;
-      font-weight: 600;
-    }
+    #stats span { color: #e8d8ff; font-weight: 600; }
 
-    #map {
+    /* ── Views ── */
+    #view-map, #view-leaderboard, #view-stats, #view-info {
       flex: 1;
+      display: none;
+      overflow: hidden;
     }
 
-    .leaflet-popup-content-wrapper {
-      background: #16213e;
-      color: #eee;
-      border: 1px solid #0f3460;
-      border-radius: 8px;
+    #view-map.active, #view-leaderboard.active { display: flex; flex-direction: column; }
+    #view-stats.active, #view-info.active { display: block; overflow-y: auto; }
+
+    /* ── Info page ── */
+    #info-wrap {
+      padding: 36px 44px;
+      max-width: 680px;
     }
 
-    .leaflet-popup-tip {
-      background: #16213e;
+    #info-wrap h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #e8d8ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 28px;
     }
 
-    .popup-title {
-      font-weight: 600;
-      font-size: 14px;
+    .info-card {
+      background: #3a1f6e;
+      border: 1px solid #5a32a3;
+      border-radius: 14px;
+      padding: 22px 26px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .info-card:hover {
+      border-color: #c9a8f5;
+      background: #4a2a84;
+    }
+
+    .info-card-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      width: 44px;
+      text-align: center;
+    }
+
+    .info-card-text .info-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #e8d8ff;
       margin-bottom: 4px;
     }
 
-    .popup-players {
+    .info-card-text .info-card-sub {
       font-size: 12px;
-      color: #aaa;
+      color: #9b7fd4;
     }
 
+    #map { flex: 1; }
+
+    /* ── Leaflet popups ── */
+    .leaflet-popup-content-wrapper {
+      background: #3a1f6e;
+      color: #e8d8ff;
+      border: 1px solid #5a32a3;
+      border-radius: 8px;
+    }
+    .leaflet-popup-tip { background: #3a1f6e; }
+    .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #fff; }
+    .popup-players { font-size: 12px; color: #9b7fd4; }
     .popup-swatch {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 6px;
-      vertical-align: middle;
+      display: inline-block; width: 12px; height: 12px;
+      border-radius: 50%; margin-right: 6px; vertical-align: middle;
     }
 
+    /* ── Legend ── */
     #legend {
       position: absolute;
-      bottom: 30px;
-      right: 10px;
+      bottom: 30px; right: 10px;
       z-index: 1000;
-      background: #16213e;
-      border: 1px solid #0f3460;
-      border-radius: 8px;
-      padding: 10px 14px;
+      background: #3a1f6eee;
+      border: 1px solid #5a32a3;
+      border-radius: 10px;
+      padding: 12px 16px;
       font-size: 12px;
       max-width: 220px;
       max-height: 50vh;
       overflow-y: auto;
     }
-
     #legend h3 {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888;
-      margin-bottom: 8px;
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 1.5px; color: #9b7fd4; margin-bottom: 10px;
     }
-
     .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      transition: background 0.15s;
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 6px; cursor: pointer;
+      padding: 3px 6px; border-radius: 5px; transition: background 0.15s;
     }
+    .legend-item:hover { background: #5a32a355; }
+    .legend-swatch { width: 24px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+    .legend-label { color: #e8d8ff; font-size: 12px; }
 
-    .legend-item:hover {
-      background: #0f3460;
-    }
-
-    .legend-swatch {
-      width: 24px;
-      height: 4px;
-      border-radius: 2px;
-      flex-shrink: 0;
-    }
-
-    .legend-label {
-      color: #ddd;
+    #type-filter {
+      width: 100%;
+      padding: 5px 8px;
+      border-radius: 6px;
+      border: 1px solid #5a32a3;
+      background: #2d1654;
+      color: #e8d8ff;
       font-size: 12px;
+      cursor: pointer;
+      outline: none;
     }
 
     #no-rides {
       display: none;
-      position: absolute;
-      top: 50%;
-      left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       z-index: 1000;
-      background: #16213e;
-      border: 1px solid #0f3460;
-      border-radius: 10px;
-      padding: 24px 32px;
-      text-align: center;
-      color: #aaa;
+      background: #3a1f6e; border: 1px solid #5a32a3;
+      border-radius: 12px; padding: 24px 32px;
+      text-align: center; color: #9b7fd4; font-size: 14px;
+    }
+
+    /* ── Leaderboard ── */
+    #leaderboard-wrap {
+      flex: 1;
+      overflow-y: auto;
+      padding: 36px 44px;
+    }
+
+    #leaderboard-wrap h2 {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 28px;
+      color: #e8d8ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
       font-size: 14px;
     }
+
+    #leaderboard-table th {
+      text-align: left;
+      padding: 10px 16px;
+      color: #9b7fd4;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #5a32a3;
+    }
+
+    #leaderboard-table th.num { text-align: right; }
+
+    #leaderboard-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #3d2070;
+      color: #c9a8f5;
+    }
+
+    #leaderboard-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    #leaderboard-table tbody tr:hover { background: #3a1f6e88; }
+
+    .rank { font-weight: 700; color: #6b4fa8; width: 32px; }
+    .rank-1 { color: #FFD700; }
+    .rank-2 { color: #C0C0C0; }
+    .rank-3 { color: #CD7F32; }
+
+    .player-name { font-weight: 600; color: #e8d8ff; }
+    .total-pts { font-weight: 800; color: #fff; font-size: 15px; }
+
+    /* ── Stats ── */
+    #stats-wrap {
+      padding: 36px 44px;
+      max-width: 900px;
+    }
+
+    #stats-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    #stats-header h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #e8d8ff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    #stats-player-select {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid #5a32a3;
+      background: #2d1654;
+      color: #e8d8ff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .stat-cards {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 36px;
+      flex-wrap: wrap;
+    }
+
+    .stat-card {
+      background: #3a1f6e;
+      border: 1px solid #5a32a3;
+      border-radius: 12px;
+      padding: 20px 24px;
+      min-width: 160px;
+      flex: 1;
+    }
+
+    .stat-card .label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #9b7fd4;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .stat-card .value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .stat-card .sub {
+      font-size: 12px;
+      color: #9b7fd4;
+      margin-top: 6px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #9b7fd4;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* ── Achievements grid ── */
+    .achievements {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .badge {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid;
+    }
+
+    .badge.earned {
+      background: #3a1f6e;
+      border-color: #7c4dcc;
+    }
+
+    .badge.locked {
+      background: #2d1654;
+      border-color: #3d2070;
+      opacity: 0.45;
+    }
+
+    .badge-icon { font-size: 22px; line-height: 1; }
+
+    .badge-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #e8d8ff;
+      line-height: 1.2;
+    }
+
+    .badge.locked .badge-title { color: #6b4fa8; }
+
+    .badge-desc {
+      font-size: 11px;
+      color: #9b7fd4;
+      line-height: 1.4;
+    }
+
+    .badge.locked .badge-desc { color: #4a3070; }
+
+    /* ── Routes list ── */
+    .routes-list {
+      background: #3a1f6e;
+      border: 1px solid #5a32a3;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .route-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 18px;
+      border-bottom: 1px solid #3d2070;
+      font-size: 13px;
+    }
+
+    .route-row:last-child { border-bottom: none; }
+
+    .route-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .route-row-name { flex: 1; color: #c9a8f5; }
+    .route-row-count { color: #9b7fd4; font-size: 12px; min-width: 60px; text-align: right; }
+    .route-row-mins  { color: #9b7fd4; font-size: 12px; min-width: 70px; text-align: right; }
   </style>
 </head>
 <body>
 
-<div id="header">
-  <h1>Transit Rides Map</h1>
-  <select id="player-select"><option>Loading...</option></select>
-  <div id="stats">Routes ridden: <span id="route-count">—</span></div>
+<!-- Nav -->
+<div id="nav">
+  <h1>NATS Summer Transit Game</h1>
+  <span class="nav-tab active" data-view="map">Map</span>
+  <span class="nav-tab" data-view="leaderboard">Leaderboard</span>
+  <span class="nav-tab" data-view="stats">Stats</span>
+  <span class="nav-tab" data-view="info">Info</span>
 </div>
 
-<div id="map"></div>
+<!-- Map view -->
+<div id="view-map" class="active">
+  <div id="map-toolbar">
+    <select id="player-select"><option>Loading...</option></select>
+    <div id="stats">Routes ridden: <span id="route-count">—</span></div>
+  </div>
+  <div id="map"></div>
+  <div id="legend">
+    <select id="type-filter">
+      <option value="__all__">All Types</option>
+      <option value="cta_rail">CTA Rail</option>
+      <option value="metra">Metra</option>
+      <option value="cta_bus">CTA Bus</option>
+      <option value="pace">Pace</option>
+    </select>
+    <h3 style="margin-top:10px">Lines</h3>
+    <div id="legend-items"></div>
+  </div>
+  <div id="no-rides">No rides logged yet for this player.</div>
+</div>
 
-<div id="legend"><h3>Lines</h3><div id="legend-items"></div></div>
+<!-- Stats view -->
+<div id="view-stats">
+  <div id="stats-wrap">
+    <div id="stats-header">
+      <h2>Player Stats</h2>
+      <select id="stats-player-select"><option>Loading...</option></select>
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="label">Total Rides</div>
+        <div class="value" id="s-rides">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Total Minutes</div>
+        <div class="value" id="s-mins">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Unique Routes</div>
+        <div class="value" id="s-routes">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Most Ridden Route</div>
+        <div class="value" id="s-top-route" style="font-size:16px;margin-top:4px">—</div>
+        <div class="sub" id="s-top-route-count"></div>
+      </div>
+    </div>
+    <div class="section-title">Achievements</div>
+    <div class="achievements" id="achievements"></div>
+    <div class="section-title">Routes Ridden</div>
+    <div class="routes-list" id="routes-list"></div>
+  </div>
+</div>
 
-<div id="no-rides">No rides logged yet for this player.</div>
+<!-- Info view -->
+<div id="view-info">
+  <div id="info-wrap">
+    <h2>Links</h2>
+    <a class="info-card" href="https://docs.google.com/document/d/1KT9liuRN7I1V7TEX3Sx2WB7Ev9_uwQHA2mE-mPYu-Kg/edit?tab=t.0" target="_blank" rel="noopener">
+      <div class="info-card-icon">📋</div>
+      <div class="info-card-text">
+        <div class="info-card-title">Game Rules</div>
+        <div class="info-card-sub">Full rules and scoring guide for the Summer Transit Game</div>
+      </div>
+    </a>
+    <a class="info-card" href="https://docs.google.com/forms/d/e/1FAIpQLSd6RrfBX_L4q3cZgkKUiCm2gCV41CIOkjz9W6SaR5_NsryY-Q/viewform" target="_blank" rel="noopener">
+      <div class="info-card-icon">📝</div>
+      <div class="info-card-text">
+        <div class="info-card-title">Submit a Ride</div>
+        <div class="info-card-sub">Log your rides to earn points on the leaderboard</div>
+      </div>
+    </a>
+    <a class="info-card" href="https://www.instagram.com/northwesternaviation/" target="_blank" rel="noopener">
+      <div class="info-card-icon">📸</div>
+      <div class="info-card-text">
+        <div class="info-card-title">@northwesternaviation</div>
+        <div class="info-card-sub">Follow NATS on Instagram</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Leaderboard view -->
+<div id="view-leaderboard">
+  <div id="leaderboard-wrap">
+    <h2>Leaderboard</h2>
+    <table id="leaderboard-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Player</th>
+          <th class="num">Total Points</th>
+          <th class="num">Time Points</th>
+          <th class="num">Bonus Points</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-body">
+        <tr><td colspan="5" style="color:#555;padding:20px 16px">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
 <script>
+  // ── Nav tabs ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.nav-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#view-map, #view-leaderboard, #view-stats, #view-info').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`view-${tab.dataset.view}`).classList.add('active');
+      if (tab.dataset.view === 'map') map.invalidateSize();
+    });
+  });
+
+  // ── Map setup ─────────────────────────────────────────────────────────────
   const map = L.map('map', { zoomControl: true }).setView([41.88, -87.65], 10);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19
+    subdomains: 'abcd', maxZoom: 19
   }).addTo(map);
 
   let allFeatures = [];
@@ -196,42 +570,44 @@
 
   function renderPlayer(playerName) {
     clearLayers();
+    const typeFilter = document.getElementById('type-filter').value;
 
-    const features = playerName === '__all__'
-      ? allFeatures
-      : allFeatures.filter(f => f.properties.players.includes(playerName));
+    const matchesType = f => {
+      const { agency, route_name } = f.properties;
+      if (typeFilter === '__all__') return true;
+      if (typeFilter === 'cta_rail') return agency === 'cta' && route_name.includes('Line');
+      if (typeFilter === 'metra')    return agency === 'metra' || agency === 'ssl';
+      if (typeFilter === 'cta_bus')  return agency === 'cta' && !route_name.includes('Line');
+      if (typeFilter === 'pace')     return agency === 'pace';
+      return true;
+    };
 
-    const noRidesEl = document.getElementById('no-rides');
+    const features = allFeatures
+      .filter(f => playerName === '__all__' || f.properties.players.includes(playerName))
+      .filter(matchesType);
+
+    const noRidesEl  = document.getElementById('no-rides');
     const legendItems = document.getElementById('legend-items');
-    const routeCount = document.getElementById('route-count');
+    const routeCount  = document.getElementById('route-count');
 
     legendItems.innerHTML = '';
     routeCount.textContent = features.length;
 
-    if (features.length === 0) {
-      noRidesEl.style.display = 'block';
-      return;
-    }
+    if (features.length === 0) { noRidesEl.style.display = 'block'; return; }
     noRidesEl.style.display = 'none';
 
     features.forEach(feature => {
       const { route_name, color, players, agency } = feature.properties;
-
-      const isCTABus = agency === 'cta' && !route_name.includes('Line');
-      const isPace   = agency === 'pace';
-      const isMetra  = agency === 'metra' || agency === 'ssl';
-      const isBus    = isCTABus || isPace;
+      const isCTABus  = agency === 'cta' && !route_name.includes('Line');
+      const isPace    = agency === 'pace';
+      const isBus     = isCTABus || isPace;
       const lineColor = isCTABus ? '#999999' : isPace ? '#7EC8E3' : color;
-      const weight = isBus ? 2.5 : 4;
+      const weight    = isBus ? 2.5 : 4;
+
       const layer = L.geoJSON(feature, {
-        style: {
-          color: lineColor,
-          weight,
-          opacity: 0.9,
-          lineJoin: 'round',
-          lineCap: 'round',
-          dashArray: isBus ? '8, 6' : null
-        }
+        style: { color: lineColor, weight, opacity: 0.9,
+                 lineJoin: 'round', lineCap: 'round',
+                 dashArray: isBus ? '8, 6' : null }
       });
 
       layer.bindPopup(`
@@ -245,7 +621,6 @@
       layer.addTo(map);
       activeLayers.push(layer);
 
-      // Legend entry
       const item = document.createElement('div');
       item.className = 'legend-item';
       item.innerHTML = `
@@ -260,9 +635,9 @@
     });
   }
 
+  // ── CSV helpers ───────────────────────────────────────────────────────────
   const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS6-06iyQhtO4SkD9HCW6FBXDOttTeF1Svd-Qu8VA4pr1RmEujLHE67LPCqpWRML7imcMA6K5G_FKRt/pub?gid=2084865834&single=true&output=csv';
 
-  // Normalize route names to handle known typos in the sheet
   function normalizeRoute(r) {
     return r.trim().replace('Union Pacfic West', 'Union Pacific West');
   }
@@ -271,7 +646,6 @@
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     return lines.slice(1).map(line => {
-      // Handle quoted fields with commas inside
       const cols = [];
       let cur = '', inQuote = false;
       for (const ch of line) {
@@ -284,19 +658,178 @@
     });
   }
 
-  // Build {routeKey: Set<playerName>} from CSV rows
   function buildRidersMap(rows) {
-    const map = {};
+    const m = {};
     for (const row of rows) {
       const player = row['Player Name']?.trim();
       const route  = normalizeRoute(row['Route'] ?? '');
       if (!player || !route) continue;
-      if (!map[route]) map[route] = new Set();
-      map[route].add(player);
+      if (!m[route]) m[route] = new Set();
+      m[route].add(player);
     }
-    return map;
+    return m;
   }
 
+  // ── Leaderboard builder ───────────────────────────────────────────────────
+  function buildLeaderboard(rows) {
+    const totals = {};
+    for (const row of rows) {
+      const player = row['Player Name']?.trim();
+      if (!player) continue;
+      if (!totals[player]) totals[player] = { time: 0, bonus: 0, total: 0 };
+      totals[player].time  += parseFloat(row['Duration Points'] || 0);
+      totals[player].bonus += parseFloat(row['Bonus Points']    || 0);
+      totals[player].total += parseFloat(row['Total Points Gained'] || 0);
+    }
+
+    const ranked = Object.entries(totals)
+      .map(([name, pts]) => ({ name, ...pts }))
+      .sort((a, b) => b.total - a.total);
+
+    const tbody = document.getElementById('leaderboard-body');
+    tbody.innerHTML = '';
+
+    ranked.forEach((p, i) => {
+      const rank = i + 1;
+      const rankClass = rank <= 3 ? ` rank-${rank}` : '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="rank${rankClass}">${rank}</td>
+        <td class="player-name">${p.name}</td>
+        <td class="num total-pts">${p.total.toLocaleString()}</td>
+        <td class="num">${p.time.toLocaleString()}</td>
+        <td class="num">${p.bonus.toLocaleString()}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ── Stats & Achievements ──────────────────────────────────────────────────
+  const ACHIEVEMENTS = [
+    { id: 'first_ride',     icon: '🚀', label: 'Humble begginings',         desc: 'Log one ride. Everyone starts from somewhere.',           check: s => s.totalRides >= 1 },
+    { id: 'frequent_flyer', icon: '🔁', label: 'Regular customer',     desc: 'Rode the same route 5 or more times. People are starting to know your name.',    check: s => s.maxRoutePlays >= 5 },
+    { id: 'marathon',       icon: '🏃', label: 'Marathonist',           desc: 'A single ride lasting a full hour or more. Gotta take stretch breaks',        check: s => s.maxSingleRide >= 60 },
+    { id: 'iron_man',       icon: '🏃', label: 'Ironman',           desc: 'A single ride lasting two hours or more. This is not Amtrak',        check: s => s.maxSingleRide >= 120 },
+    { id: 'cta_rail_1',    icon: '🚇', label: 'CTA Rail Rookie',    desc: 'Rode your first CTA L line.',                                check: s => s.uniqueCTARail >= 1 },
+    { id: 'cta_rail_3',    icon: '🚇', label: 'CTA Rail Regular',   desc: 'Rode 3 different CTA L lines.',                              check: s => s.uniqueCTARail >= 3 },
+    { id: 'cta_rail_5',    icon: '🚇', label: 'CTA Rail Explorer',  desc: 'Rode 5 different CTA L lines.',           check: s => s.uniqueCTARail >= 5 },
+    { id: 'metra_1',       icon: '🚆', label: 'Metra Rookie',       desc: 'Rode your first Metra line',            check: s => s.uniqueMetra >= 1 },
+    { id: 'metra_3',       icon: '🚆', label: 'Metra Regular',      desc: 'Rode 3 different Metra lines.',            check: s => s.uniqueMetra >= 3 },
+    { id: 'metra_5',       icon: '🚆', label: 'Metra Explorer',     desc: 'Rode 5 different Metra lines.',        check: s => s.uniqueMetra >= 5 },
+    { id: 'cta_bus_3',     icon: '🚌', label: 'CTA Bus Rookie',     desc: 'Rode 3 different CTA bus routes.',                          check: s => s.uniqueCTABus >= 3 },
+    { id: 'cta_bus_5',     icon: '🚌', label: 'CTA Bus Regular',    desc: 'Rode 5 different CTA bus routes.',                          check: s => s.uniqueCTABus >= 5 },
+    { id: 'cta_bus_10',    icon: '🚌', label: 'CTA Bus Explorer',   desc: 'Rode 10 different CTA bus routes.',      check: s => s.uniqueCTABus >= 10 },
+    { id: 'pace_3',        icon: '🚍', label: 'Pace Rookie',        desc: 'Rode 3 different Pace routes.',       check: s => s.uniquePace >= 3 },
+    { id: 'pace_5',        icon: '🚍', label: 'Pace Regular',       desc: 'Rode 5 different Pace routes.',                            check: s => s.uniquePace >= 5 },
+    { id: 'pace_10',       icon: '🚍', label: 'Pace Explorer',      desc: 'Rode 10 different Pace routes.',   check: s => s.uniquePace >= 10 },
+    { id: 'cta_rail_all', icon: '🏆', label: 'L Master',    desc: 'Rode all 8 CTA L lines. You L-evated yourself to a whole new level.',     check: s => s.uniqueCTARail >= 8 },
+    { id: 'metra_all',    icon: '🏆', label: 'Metra Master', desc: 'Rode all 11 Metra lines. You can now call yourself a commuter.', check: s => s.uniqueMetra >= 11 },
+    { id: 'cta_bus_all',  icon: '🏆', label: 'Bus Master',         desc: 'Rode all 133 CTA bus routes. Please call (847) 491-2151 for Counselling and Psychological Services (CAPS)',          check: s => s.uniqueCTABus >= 133 },
+    { id: 'pace_all',     icon: '🏆', label: 'Pace Master',        desc: 'Rode all 134 Pace routes. This achievement triggers an emergency NATS meeting for an intervention. This is not ok.',                  check: s => s.uniquePace >= 134 },
+  ];
+
+  function computePlayerStats(rows, playerName) {
+    const playerRows = rows.filter(r => r['Player Name']?.trim() === playerName);
+
+    const routeCounts = {};   // route -> ride count
+    const routeMins   = {};   // route -> total minutes
+    const routeType   = {};   // route -> transit type
+    let totalMins = 0, maxSingleRide = 0;
+
+    const uniqueCTARail = new Set();
+    const uniqueMetra   = new Set();
+    const uniqueCTABus  = new Set();
+    const uniquePace    = new Set();
+
+    for (const row of playerRows) {
+      const route = row['Route']?.trim();
+      const ttype = row['Transit Type']?.trim();
+      const mins  = parseFloat(row['Ride Duration'] || 0);
+
+      routeCounts[route] = (routeCounts[route] || 0) + 1;
+      routeMins[route]   = (routeMins[route]   || 0) + mins;
+      routeType[route]   = ttype;
+      totalMins += mins;
+      if (mins > maxSingleRide) maxSingleRide = mins;
+
+      if (ttype === 'CTA Rail') uniqueCTARail.add(route);
+      if (ttype === 'Metra')    uniqueMetra.add(route);
+      if (ttype === 'CTA Bus')  uniqueCTABus.add(route);
+      if (ttype === 'Pace Bus') uniquePace.add(route);
+    }
+
+    const maxRoutePlays = Math.max(0, ...Object.values(routeCounts));
+    const topRoute = Object.entries(routeCounts).sort((a,b) => b[1]-a[1])[0];
+
+    return {
+      totalRides: playerRows.length,
+      totalMins,
+      maxSingleRide,
+      uniqueRoutes: Object.keys(routeCounts).length,
+      topRoute: topRoute ? topRoute[0] : null,
+      topRouteCount: topRoute ? topRoute[1] : 0,
+      maxRoutePlays,
+      routeCounts, routeMins, routeType,
+      uniqueCTARail: uniqueCTARail.size,
+      uniqueMetra:   uniqueMetra.size,
+      uniqueCTABus:  uniqueCTABus.size,
+      uniquePace:    uniquePace.size,
+    };
+  }
+
+  function renderStats(rows, geojsonFeatures, playerName) {
+    const s = computePlayerStats(rows, playerName);
+
+    document.getElementById('s-rides').textContent  = s.totalRides;
+    document.getElementById('s-mins').textContent   = Math.round(s.totalMins).toLocaleString();
+    document.getElementById('s-routes').textContent = s.uniqueRoutes;
+    document.getElementById('s-top-route').textContent      = s.topRoute ?? '—';
+    document.getElementById('s-top-route-count').textContent = s.topRoute ? `${s.topRouteCount} rides` : '';
+
+    // Achievements
+    const achEl = document.getElementById('achievements');
+    achEl.innerHTML = '';
+    ACHIEVEMENTS.forEach(a => {
+      const earned = a.check(s);
+      const div = document.createElement('div');
+      div.className = `badge ${earned ? 'earned' : 'locked'}`;
+      div.innerHTML = `
+        <span class="badge-icon">${a.icon}</span>
+        <div class="badge-title">${a.label}</div>
+        <div class="badge-desc">${a.desc}</div>
+      `;
+      achEl.appendChild(div);
+    });
+
+    // Routes list — build color lookup from geojson
+    const colorMap = {};
+    geojsonFeatures.forEach(f => {
+      const key = f.properties.route_key;
+      const agency = f.properties.agency;
+      const isCTABus = agency === 'cta' && !f.properties.route_name.includes('Line');
+      const isPace   = agency === 'pace';
+      colorMap[key] = isCTABus ? '#999999' : isPace ? '#7EC8E3' : f.properties.color;
+    });
+
+    const listEl = document.getElementById('routes-list');
+    listEl.innerHTML = '';
+    const sortedRoutes = Object.entries(s.routeCounts).sort((a,b) => b[1]-a[1]);
+    sortedRoutes.forEach(([route, count]) => {
+      const mins  = Math.round(s.routeMins[route]);
+      const color = colorMap[route] || colorMap[normalizeRoute(route)] || '#888';
+      const div = document.createElement('div');
+      div.className = 'route-row';
+      div.innerHTML = `
+        <div class="route-dot" style="background:${color}"></div>
+        <div class="route-row-name">${route}</div>
+        <div class="route-row-count">${count} ride${count>1?'s':''}</div>
+        <div class="route-row-mins">${mins} min</div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+
+  // ── Load everything ───────────────────────────────────────────────────────
   Promise.all([
     fetch('routes_ridden.geojson').then(r => r.json()),
     fetch(SHEET_CSV).then(r => r.text())
@@ -304,14 +837,12 @@
     const rows = parseCSV(csvText);
     const ridersMap = buildRidersMap(rows);
 
-    // Attach live player lists to each feature using route_key
     allFeatures = geojson.features.map(f => {
       const key = normalizeRoute(f.properties.route_key);
       const players = Array.from(ridersMap[key] ?? []).sort();
       return { ...f, properties: { ...f.properties, players } };
     }).filter(f => f.properties.players.length > 0);
 
-    // Collect unique players from live data
     const playerSet = new Set();
     Object.values(ridersMap).forEach(s => s.forEach(p => playerSet.add(p)));
     const players = Array.from(playerSet).sort();
@@ -332,7 +863,22 @@
     });
 
     select.addEventListener('change', () => renderPlayer(select.value));
+    document.getElementById('type-filter').addEventListener('change', () => renderPlayer(select.value));
     renderPlayer('__all__');
+
+    buildLeaderboard(rows);
+
+    // Stats player selector
+    const statsSelect = document.getElementById('stats-player-select');
+    statsSelect.innerHTML = '';
+    players.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      statsSelect.appendChild(opt);
+    });
+    renderStats(rows, geojson.features, players[0]);
+    statsSelect.addEventListener('change', () => renderStats(rows, geojson.features, statsSelect.value));
 
   }).catch(err => {
     console.error('Failed to load data:', err);
