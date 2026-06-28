@@ -639,7 +639,9 @@
   const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS6-06iyQhtO4SkD9HCW6FBXDOttTeF1Svd-Qu8VA4pr1RmEujLHE67LPCqpWRML7imcMA6K5G_FKRt/pub?gid=2084865834&single=true&output=csv';
 
   function normalizeRoute(r) {
-    return r.trim().replace('Union Pacfic West', 'Union Pacific West');
+    r = r.trim();
+    if (r === 'BNSF') return 'Burlington Northern (BNSF)';
+    return r.replace('Union Pacfic West', 'Union Pacific West');
   }
 
   function parseCSV(text) {
