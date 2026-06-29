@@ -641,6 +641,8 @@
   function normalizeRoute(r) {
     r = r.trim();
     if (r === 'BNSF') return 'Burlington Northern (BNSF)';
+    if (r === 'Milwaukee District North (MDN)') return 'Milwaukee North (MDN)';
+    if (r === 'Milwaukee District West (MDW)') return 'Milwaukee West (MDW)';
     return r.replace('Union Pacfic West', 'Union Pacific West');
   }
 
