@@ -24,10 +24,11 @@
       border-bottom: 2px solid #5a32a3;
       display: flex;
       align-items: center;
-      padding: 0 24px;
-      gap: 28px;
+      padding: 0 16px;
+      gap: 18px;
       flex-shrink: 0;
       height: 52px;
+      overflow: hidden;
     }
 
     #nav h1 {
@@ -91,7 +92,7 @@
     #stats span { color: #e8d8ff; font-weight: 600; }
 
     /* ── Views ── */
-    #view-map, #view-leaderboard, #view-stats, #view-info {
+    #view-map, #view-leaderboard, #view-stats, #view-routes, #view-info {
       flex: 1;
       display: none;
       overflow: hidden;
@@ -424,6 +425,96 @@
     .route-row-name { flex: 1; color: #c9a8f5; }
     .route-row-count { color: #9b7fd4; font-size: 12px; min-width: 60px; text-align: right; }
     .route-row-mins  { color: #9b7fd4; font-size: 12px; min-width: 70px; text-align: right; }
+
+    /* ── Routes Explorer ── */
+    #view-routes.active { display: flex; flex-direction: column; overflow: hidden; }
+
+    #routes-toolbar {
+      padding: 12px 20px;
+      background: #3a1f6e;
+      border-bottom: 1px solid #5a32a3;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    #routes-search {
+      flex: 1; min-width: 160px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #5a32a3;
+      background: #2d1654;
+      color: #e8d8ff;
+      font-size: 13px;
+      outline: none;
+    }
+    #routes-search::placeholder { color: #6b4fa8; }
+    #routes-search:focus { border-color: #c9a8f5; }
+    .routes-filter-select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #5a32a3;
+      background: #2d1654;
+      color: #e8d8ff;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+    }
+    #routes-count-badge { margin-left: auto; font-size: 12px; color: #9b7fd4; white-space: nowrap; }
+    #routes-body { display: flex; flex: 1; overflow: hidden; }
+    #routes-table-wrap { flex: 1; overflow-y: auto; min-width: 0; }
+    #routes-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #routes-table th {
+      position: sticky; top: 0;
+      background: #2d1654;
+      padding: 10px 14px;
+      text-align: left;
+      color: #9b7fd4;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #5a32a3;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    #routes-table th:hover { color: #c9a8f5; }
+    #routes-table th.sorted { color: #e8d8ff; }
+    #routes-table th.num { text-align: right; }
+    #routes-table td { padding: 10px 14px; border-bottom: 1px solid #3d2070; color: #c9a8f5; vertical-align: middle; }
+    #routes-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    #routes-table tbody tr { cursor: pointer; transition: background 0.1s; }
+    #routes-table tbody tr:hover { background: #3a1f6e88; }
+    #routes-table tbody tr.selected { background: #4a2a8088; outline: 1px solid #7c4dcc; }
+    .rt-swatch { display: inline-block; width: 28px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 8px; }
+    .rt-name { color: #e8d8ff; }
+    .rt-type-badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+
+    #route-detail {
+      width: 340px; flex-shrink: 0;
+      border-left: 1px solid #5a32a3;
+      display: flex; flex-direction: column;
+      background: #2d1654;
+    }
+    #route-detail-header { padding: 14px 16px 10px; border-bottom: 1px solid #5a32a3; flex-shrink: 0; }
+    #route-detail-name { font-size: 14px; font-weight: 700; color: #e8d8ff; margin-bottom: 4px; }
+    #route-detail-meta { font-size: 11px; color: #9b7fd4; }
+    #route-mini-map { flex: 1; min-height: 0; }
+    #route-detail-stats {
+      padding: 12px 16px;
+      border-top: 1px solid #5a32a3;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .rd-stat .rd-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #9b7fd4; margin-bottom: 2px; }
+    .rd-stat .rd-value { font-size: 18px; font-weight: 800; color: #fff; }
+    #route-detail-placeholder {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: #4a3070; font-size: 13px; text-align: center; padding: 24px;
+    }
   </style>
 </head>
 <body>
@@ -434,6 +525,7 @@
   <span class="nav-tab active" data-view="map">Map</span>
   <span class="nav-tab" data-view="leaderboard">Leaderboard</span>
   <span class="nav-tab" data-view="stats">Stats</span>
+  <span class="nav-tab" data-view="routes">Routes</span>
   <span class="nav-tab" data-view="info">Info</span>
 </div>
 
@@ -491,6 +583,44 @@
   </div>
 </div>
 
+<!-- Routes Explorer view -->
+<div id="view-routes">
+  <div id="routes-toolbar">
+    <input id="routes-search" type="text" placeholder="Search routes…" />
+    <select id="routes-type-filter" class="routes-filter-select">
+      <option value="__all__">All Types</option>
+      <option value="cta_rail">CTA Rail</option>
+      <option value="metra">Metra</option>
+      <option value="cta_bus">CTA Bus</option>
+      <option value="pace">Pace</option>
+      <option value="ssl">SSL</option>
+    </select>
+    <select id="routes-player-filter" class="routes-filter-select">
+      <option value="__all__">All Players</option>
+    </select>
+    <span id="routes-count-badge">— routes</span>
+  </div>
+  <div id="routes-body">
+    <div id="routes-table-wrap">
+      <table id="routes-table">
+        <thead>
+          <tr>
+            <th data-col="name">Route <span class="sort-arrow"></span></th>
+            <th data-col="type">Type <span class="sort-arrow"></span></th>
+            <th data-col="playerCount" class="num">Players <span class="sort-arrow"></span></th>
+            <th data-col="rides" class="num">Rides <span class="sort-arrow"></span></th>
+            <th data-col="mins" class="num">Minutes <span class="sort-arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="routes-table-body"></tbody>
+      </table>
+    </div>
+    <div id="route-detail">
+      <div id="route-detail-placeholder">Select a route to see it on the map</div>
+    </div>
+  </div>
+</div>
+
 <!-- Info view -->
 <div id="view-info">
   <div id="info-wrap">
@@ -545,7 +675,7 @@
   document.querySelectorAll('.nav-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('#view-map, #view-leaderboard, #view-stats, #view-info').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('#view-map, #view-leaderboard, #view-stats, #view-routes, #view-info').forEach(v => v.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(`view-${tab.dataset.view}`).classList.add('active');
       if (tab.dataset.view === 'map') map.invalidateSize();
@@ -884,10 +1014,171 @@
     renderStats(rows, geojson.features, players[0]);
     statsSelect.addEventListener('change', () => renderStats(rows, geojson.features, statsSelect.value));
 
+    buildRoutesExplorer(geojson.features, rows);
+
   }).catch(err => {
     console.error('Failed to load data:', err);
     document.getElementById('stats').textContent = 'Error loading data.';
   });
+
+  // ── Routes Explorer ────────────────────────────────────────────────────────
+  let miniMap = null;
+
+  const TYPE_LABELS = { cta_rail:'CTA Rail', cta_bus:'CTA Bus', metra:'Metra', pace:'Pace', ssl:'SSL' };
+  const TYPE_COLORS = { cta_rail:'#a78bfa', cta_bus:'#6b7280', metra:'#60a5fa', pace:'#38bdf8', ssl:'#f472b6' };
+
+  function routeCategory(f) {
+    const { agency, route_name } = f.properties;
+    if (agency === 'ssl')   return 'ssl';
+    if (agency === 'metra') return 'metra';
+    if (agency === 'pace')  return 'pace';
+    return route_name.includes('Line') ? 'cta_rail' : 'cta_bus';
+  }
+
+  function routeLineColor(f) {
+    const cat = routeCategory(f);
+    if (cat === 'cta_bus') return '#999999';
+    if (cat === 'pace')    return '#7EC8E3';
+    return f.properties.color;
+  }
+
+  function buildRoutesExplorer(geojsonFeatures, csvRows) {
+    const routeStats = {};
+    for (const row of csvRows) {
+      const player = row['Player Name']?.trim();
+      const key    = normalizeRoute(row['Route'] ?? '');
+      const mins   = parseFloat(row['Ride Duration'] || 0);
+      if (!player || !key) continue;
+      if (!routeStats[key]) routeStats[key] = { rides:0, mins:0, players:new Set() };
+      routeStats[key].rides++;
+      routeStats[key].mins += mins;
+      routeStats[key].players.add(player);
+    }
+
+    const allRoutes = geojsonFeatures.map(f => {
+      const key   = f.properties.route_key;
+      const st    = routeStats[key] || { rides:0, mins:0, players:new Set() };
+      const cat   = routeCategory(f);
+      return {
+        feature: f, key,
+        name: f.properties.route_name,
+        type: TYPE_LABELS[cat],
+        category: cat,
+        color: routeLineColor(f),
+        rides: st.rides,
+        mins: Math.round(st.mins),
+        playerCount: st.players.size,
+        playerNames: Array.from(st.players).sort(),
+      };
+    });
+
+    // Populate player filter
+    const playerSet = new Set();
+    allRoutes.forEach(r => r.playerNames.forEach(p => playerSet.add(p)));
+    const pFilter = document.getElementById('routes-player-filter');
+    Array.from(playerSet).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      pFilter.appendChild(opt);
+    });
+
+    let sortCol = 'rides', sortAsc = false, selectedKey = null;
+
+    function filtered() {
+      const q      = document.getElementById('routes-search').value.toLowerCase();
+      const type   = document.getElementById('routes-type-filter').value;
+      const player = pFilter.value;
+      return allRoutes.filter(r => {
+        if (q && !r.name.toLowerCase().includes(q)) return false;
+        if (type !== '__all__' && r.category !== type) return false;
+        if (player !== '__all__' && !r.playerNames.includes(player)) return false;
+        return true;
+      });
+    }
+
+    function renderTable() {
+      const rows = filtered().sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (typeof va === 'string') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+        if (va < vb) return sortAsc ? -1 : 1;
+        if (va > vb) return sortAsc ?  1 : -1;
+        return 0;
+      });
+
+      document.getElementById('routes-count-badge').textContent = `${rows.length} route${rows.length !== 1 ? 's' : ''}`;
+
+      document.querySelectorAll('#routes-table th[data-col]').forEach(th => {
+        const col = th.dataset.col;
+        th.classList.toggle('sorted', col === sortCol);
+        th.querySelector('.sort-arrow').textContent = col === sortCol ? (sortAsc ? ' ▲' : ' ▼') : '';
+      });
+
+      const tbody = document.getElementById('routes-table-body');
+      tbody.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        if (r.key === selectedKey) tr.classList.add('selected');
+        const bc = TYPE_COLORS[r.category];
+        tr.innerHTML = `
+          <td class="rt-name">
+            <span class="rt-swatch" style="background:${r.color}"></span>${r.name}
+          </td>
+          <td><span class="rt-type-badge" style="background:${bc}22;color:${bc}">${r.type}</span></td>
+          <td class="num">${r.playerCount || '—'}</td>
+          <td class="num">${r.rides || '—'}</td>
+          <td class="num">${r.mins > 0 ? r.mins.toLocaleString() : '—'}</td>
+        `;
+        tr.addEventListener('click', () => { selectedKey = r.key; renderTable(); showRouteDetail(r); });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function showRouteDetail(r) {
+      const panel = document.getElementById('route-detail');
+      panel.innerHTML = `
+        <div id="route-detail-header">
+          <div id="route-detail-name">${r.name}</div>
+          <div id="route-detail-meta">${r.type}${r.playerNames.length ? ' · ' + r.playerNames.join(', ') : ' · Not yet ridden'}</div>
+        </div>
+        <div id="route-mini-map"></div>
+        <div id="route-detail-stats">
+          <div class="rd-stat"><div class="rd-label">Rides</div><div class="rd-value">${r.rides || '—'}</div></div>
+          <div class="rd-stat"><div class="rd-label">Minutes</div><div class="rd-value">${r.mins > 0 ? r.mins.toLocaleString() : '—'}</div></div>
+          <div class="rd-stat"><div class="rd-label">Players</div><div class="rd-value">${r.playerCount || '—'}</div></div>
+          <div class="rd-stat"><div class="rd-label">Type</div><div class="rd-value" style="font-size:13px;margin-top:4px">${r.type}</div></div>
+        </div>
+      `;
+
+      if (miniMap) { miniMap.remove(); miniMap = null; }
+      miniMap = L.map('route-mini-map', { zoomControl:false, attributionControl:false }).setView([41.88,-87.65], 10);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains:'abcd', maxZoom:19 }).addTo(miniMap);
+
+      const isBus = r.category === 'cta_bus' || r.category === 'pace';
+      const layer = L.geoJSON(r.feature, {
+        style: { color:r.color, weight:isBus?2.5:4, opacity:0.95, lineJoin:'round', lineCap:'round', dashArray:isBus?'8,6':null }
+      }).addTo(miniMap);
+
+      setTimeout(() => { miniMap.invalidateSize(); miniMap.fitBounds(layer.getBounds(), { padding:[20,20] }); }, 50);
+    }
+
+    document.getElementById('routes-search').addEventListener('input', renderTable);
+    document.getElementById('routes-type-filter').addEventListener('change', renderTable);
+    pFilter.addEventListener('change', renderTable);
+    document.querySelectorAll('#routes-table th[data-col]').forEach(th => {
+      th.addEventListener('click', () => {
+        if (sortCol === th.dataset.col) sortAsc = !sortAsc;
+        else { sortCol = th.dataset.col; sortAsc = false; }
+        renderTable();
+      });
+    });
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (tab.dataset.view === 'routes' && miniMap) setTimeout(() => miniMap.invalidateSize(), 50);
+      });
+    });
+
+    renderTable();
+  }
 </script>
 
 </body>
