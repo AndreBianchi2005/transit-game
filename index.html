@@ -768,12 +768,55 @@
   // ── CSV helpers ───────────────────────────────────────────────────────────
   const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS6-06iyQhtO4SkD9HCW6FBXDOttTeF1Svd-Qu8VA4pr1RmEujLHE67LPCqpWRML7imcMA6K5G_FKRt/pub?gid=2084865834&single=true&output=csv';
 
+  const ROUTE_FIXES = {
+    "Red Line":"Red","Orange Line":"Orange","Yellow Line":"Yellow","Green Line":"Green",
+    "Blue Line":"Blue","Purple Line":"Purple","Brown Line":"Brown","Pink Line":"Pink",
+    "BNSF":"Burlington Northern (BNSF)",
+    "Milwaukee District North (MDN)":"Milwaukee North (MDN)",
+    "Milwaukee District West (MDW)":"Milwaukee West (MDW)",
+    "Union Pacfic West (UPW)":"Union Pacific West (UPW)",
+    "Bronzeville / Union Station":"Bronzeville/Union Station",
+    "Museum of Science and Industry Express":"Museum of Science & Industry Express",
+    "North Cicero / Skokie Blvd":"North Cicero/Skokie Blvd.",
+    "Archer / Harlem":"Archer/Harlem",
+    "100 - Jeffrey Manor Express":"100 - Jeffery Manor Express",
+    "169 - 169th/UPS Express":"169 - 69th/UPS Express",
+    "UChicago/Hyde Park":"U. of Chicago/Hyde Park",
+    "UChicago/Kenwood":"U. of Chicago/Kenwood",
+    "UChicago Hospitals Express":"University of Chicago Hospitals Express",
+    "215 - Crawford - Howard":"215 - Crawford-Howard",
+    "305 - East Roosevelt Road":"305 - East Roosevelt",
+    "310 - Madison Street - Hillside":"310 - West Madison - Hillside",
+    "313 - Saint Charles Road":"313 - St. Charles Rd.",
+    "315 - Austin Boulevard - Midway":"315 - Austin Boulevard",
+    "322 - Cermak Road - 22nd Street":"322 - Cermak Road - 22nd St.",
+    "353 - 95th/Dan Ryan CTA - River Oaks - Homewood Limited":"353 - 95th/Dan Ryan CTA-Calumet City-Homewood",
+    "360 - Harvey - Amazon Monee Express":"360 - Harvey-Amazon Monee",
+    "385 - 87th - 111th - 127th":"385 - 87th / 111th / 127th",
+    "412 - North Niles Circulator":"412 - Niles North Circulator",
+    "422 - Linden CTA - Glenview - Northbrook Court":"422 - Linden CTA/Glenview/Northbrook Court",
+    "423 - Linden CTA - The Glen - Harlem CTA":"423 - Linden CTA - The Glen - Harlem L CTA",
+    "471 - Highland Park - Northbrook Court":"471 - Highland Park-Northbrook Court",
+    "509 - Joliet - Fairmont":"509 - Joliet-Fairmont",
+    "511 - Joliet - Elwood - CenterPoint":"511 - Joliet- Elwood -Centerpoint",
+    "512 - Joliet - CenterPoint":"512 - Joliet - Centerpoint",
+    "543 - Dundee - Carpentersville":"543 - Dundee-Carpentersville",
+    "546 - Orange - Walnut":"546 - Orange-Walnut",
+    "603 - Elgin Transportation Center - Rosemont Express":"603 - Elgin Terminal - Rosemont Express",
+    "711 - Wheaton - Addison":"711 - Wheaton-Addison",
+    "714 - College of DuPage - Naperville - Wheaton Connector":"714 - College of DuPage-Naperville-Wheaton Connector",
+    "801 - Elgin - Geneva":"801 - Elgin-Geneva",
+    "802 - Aurora - Geneva via Lake":"802 - Aurora - Geneva via Lake Street",
+    "806 - Crystal Lake - Fox Lake":"806 - Crystal Lake-Fox Lake",
+    "807 - Woodstock - McHenry":"807 - Woodstock-McHenry",
+    "808 - Crystal Lake - Harvard":"808 - Crystal Lake-Harvard",
+    "855 - Plainfield - East Loop Express":"855 - Plainfield-East Loop Express",
+    "905 - Woodfield Trolley":"Woodfield Trolley",
+  };
+
   function normalizeRoute(r) {
-    r = r.trim();
-    if (r === 'BNSF') return 'Burlington Northern (BNSF)';
-    if (r === 'Milwaukee District North (MDN)') return 'Milwaukee North (MDN)';
-    if (r === 'Milwaukee District West (MDW)') return 'Milwaukee West (MDW)';
-    return r.replace('Union Pacfic West', 'Union Pacific West');
+    r = r.trim().replace(/\s*–\s*/g, ' - ');  // en dash → hyphen with spaces
+    return ROUTE_FIXES[r] ?? r;
   }
 
   function parseCSV(text) {
